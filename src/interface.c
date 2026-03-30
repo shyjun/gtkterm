@@ -875,7 +875,7 @@ void Set_status_message(gchar *msg)
 
 void Set_window_title(gchar *msg)
 {
-	gchar* header = g_strdup_printf("GTKTerm - %s", msg);
+	gchar* header = g_strdup_printf("GTKTerm(%d) - %s", getpid(), msg);
 	gtk_window_set_title(GTK_WINDOW(Fenetre), header);
 	g_free(header);
 }
