@@ -401,7 +401,7 @@ static GPtrArray *find_serial_ports(const struct device_path *devp)
 		}
 	}
 
-	g_ptr_array_sort_values(ports, compare_seminum);
+	g_ptr_array_sort(ports, compare_seminum);
 	return ports;
 }
 
