@@ -45,12 +45,44 @@ unsigned int set_port_baudrate(unsigned int baud, int port_fd)
 
 #elif defined(HAVE_LINUX_TERMIOS_H)
 
-#include <linux/termios.h>
+#include <termios.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 
-/* <termios.h> cannot be included here */
-#define NO_TERMIOS
+#ifndef __struct_termios2_defined
+#define __struct_termios2_defined
+struct termios2 {
+	unsigned int c_iflag;
+	unsigned int c_oflag;
+	unsigned int c_cflag;
+	unsigned int c_lflag;
+	unsigned char c_line;
+	unsigned char c_cc[19];
+	speed_t c_ispeed;
+	speed_t c_ospeed;
+};
+#endif
+
+#ifndef TCGETS2
+# define TCGETS2 _IOR('t', 19, struct termios2)
+#endif
+#ifndef TCSETS2
+# define TCSETS2 _IOW('t', 20, struct termios2)
+#endif
+#ifndef BOTHER
+# ifdef __BOTHER
+#  define BOTHER __BOTHER
+# else
+#  define BOTHER 0x80000000U
+# endif
+#endif
+#ifndef CBAUD
+# define CBAUD 0x100fU
+#endif
+#ifndef CIBAUD
+# define CIBAUD 0x100f0000U
+#endif
+
 #include "serial.h"
 
 #ifndef TCSETS2
@@ -63,27 +95,28 @@ unsigned int set_port_baudrate(unsigned int baud, int port_fd)
 #  define TCGETS2 TCGETS
 # endif
 #endif
-#ifdef __BOTHER
-# undef  BOTHER
-# define BOTHER __BOTHER
-#endif
-#ifndef CIBAUD
-# define CIBAUD (CBAUD << 16)
-#endif
 
 unsigned int set_port_baudrate(unsigned int baud, int port_fd)
 {
 	struct termios2 tio;
-	CHK(ioctl(port_fd, TCGETS2, &tio));
+	if (ioctl(port_fd, TCGETS2, &tio) < 0) {
+		return 0;
+	}
 
 	tio.c_ispeed = tio.c_ospeed = baud;
 	tio.c_cflag &= ~(CBAUD | CIBAUD);
 	tio.c_cflag |= BOTHER;
 
-	CHK(ioctl(port_fd, TCSETS2, &tio));
-	CHK(ioctl(port_fd, TCGETS2, &tio));
+	if (ioctl(port_fd, TCSETS2, &tio) < 0) {
+		return 0;
+	}
+	if (ioctl(port_fd, TCGETS2, &tio) < 0) {
+		return 0;
+	}
 
-	CHK((tio.c_cflag & CBAUD) ==  BOTHER);
+	if (tio.c_ospeed == 0) {
+		return baud;
+	}
 	return tio.c_ospeed;
 }
 
