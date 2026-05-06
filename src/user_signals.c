@@ -35,6 +35,7 @@ static gboolean handle_signal_io(GIOChannel *channel, GIOCondition condition, gp
                 interface_close_port();
             } else if (sig == SIGRTMIN) {
                 clear_display();
+                void logging_clear(void); logging_clear();
             }
         }
     }
