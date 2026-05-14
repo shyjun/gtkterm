@@ -347,6 +347,11 @@ static int compare_seminum(const void *a, const void *b)
 	return *sb != 0;
 }
 
+static int compare_seminum_wrapper(const void *a, const void *b)
+{
+	return compare_seminum(*(const char **)a, *(const char **)b);
+}
+
 static int is_serial_port(const char *path, const struct device_path *dp)
 {
 	struct stat st;
@@ -401,7 +406,7 @@ static GPtrArray *find_serial_ports(const struct device_path *devp)
 		}
 	}
 
-	g_ptr_array_sort_values(ports, compare_seminum);
+	g_ptr_array_sort(ports, compare_seminum_wrapper);
 	return ports;
 }
 

@@ -45,9 +45,17 @@ unsigned int set_port_baudrate(unsigned int baud, int port_fd)
 
 #elif defined(HAVE_LINUX_TERMIOS_H)
 
-#include <linux/termios.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
+
+/* Both <sys/ioctl.h> and <linux/termios.h> define struct winsize and
+ * struct termio. To avoid redefinition errors, we rename them before
+ * including the kernel header. */
+#define winsize kernel_winsize
+#define termio kernel_termio
+#include <linux/termios.h>
+#undef winsize
+#undef termio
 
 /* <termios.h> cannot be included here */
 #define NO_TERMIOS
@@ -83,7 +91,8 @@ unsigned int set_port_baudrate(unsigned int baud, int port_fd)
 	CHK(ioctl(port_fd, TCSETS2, &tio));
 	CHK(ioctl(port_fd, TCGETS2, &tio));
 
-	CHK((tio.c_cflag & CBAUD) ==  BOTHER);
+	/* Verify BOTHER is set in c_cflag */
+	CHK(!(tio.c_cflag & BOTHER));
 	return tio.c_ospeed;
 }
 
