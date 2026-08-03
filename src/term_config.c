@@ -1185,7 +1185,7 @@ gint Load_configuration_from_file(gchar *config_name)
 				if(autoreconnect_enabled[i] != -1)
 					config.autoreconnect_enabled = (gboolean)autoreconnect_enabled[i];
 				else
-					config.autoreconnect_enabled = FALSE;
+					config.autoreconnect_enabled = TRUE;
 
 				if(esc_clear_screen[i] != -1)
 					config.esc_clear_screen = (gboolean)esc_clear_screen[i];
@@ -1401,7 +1401,7 @@ void Hard_default_configuration(void)
 	config.car = DEFAULT_CHAR;
 	config.echo = DEFAULT_ECHO;
 	config.crlfauto = FALSE;
-	config.autoreconnect_enabled = FALSE;
+	config.autoreconnect_enabled = TRUE;
 	config.esc_clear_screen = FALSE;
 	config.timestamp = FALSE;
   config.disable_port_lock = FALSE;

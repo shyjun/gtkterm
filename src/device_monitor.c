@@ -31,13 +31,66 @@
 
 extern struct configuration_port config;
 
+#include <fcntl.h>
+
+extern int serial_port_fd;
+
+static guint reconnect_timer_id = 0;
+static int reconnect_attempts = 0;
+
+static gboolean reconnect_timer_cb(gpointer user_data)
+{
+	reconnect_attempts++;
+
+	if (serial_port_fd != -1) {
+		reconnect_timer_id = 0;
+		return G_SOURCE_REMOVE;
+	}
+
+	if (config.autoreconnect_enabled && config.port && config.port[0]) {
+		int fd = open(config.port, O_RDWR | O_NOCTTY | O_NDELAY);
+		if (fd != -1) {
+			close(fd);
+			interface_open_port();
+			if (serial_port_fd != -1) {
+				reconnect_timer_id = 0;
+				return G_SOURCE_REMOVE;
+			}
+		}
+	}
+
+	if (reconnect_attempts >= 15) {
+		reconnect_timer_id = 0;
+		return G_SOURCE_REMOVE;
+	}
+
+	return G_SOURCE_CONTINUE;
+}
+
 static inline void device_monitor_status(const bool connected)
 {
 	if (connected) {
-		if (config.autoreconnect_enabled)
-			interface_open_port();
-	} else
+		if (config.autoreconnect_enabled) {
+			if (reconnect_timer_id != 0) {
+				g_source_remove(reconnect_timer_id);
+				reconnect_timer_id = 0;
+			}
+			reconnect_attempts = 0;
+			int fd = open(config.port, O_RDWR | O_NOCTTY | O_NDELAY);
+			if (fd != -1) {
+				close(fd);
+				interface_open_port();
+			} else {
+				reconnect_timer_id = g_timeout_add(200, reconnect_timer_cb, NULL);
+			}
+		}
+	} else {
+		if (reconnect_timer_id != 0) {
+			g_source_remove(reconnect_timer_id);
+			reconnect_timer_id = 0;
+		}
 		interface_close_port();
+	}
 }
 
 static inline void device_monitor_handle(const char *action)
