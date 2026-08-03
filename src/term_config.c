@@ -450,8 +450,21 @@ void Config_Port_Fenetre(GtkAction *action, gpointer data)
 	device_paths = get_device_paths();
 	ports = find_serial_ports(device_paths);
 
-	if (!ports->len)
-	{
+	/* Always include the currently configured port in the list even if it
+	 * is temporarily absent (e.g. during a USB device reset). This matches
+	 * the pre-term_probe behaviour where ttyS0-11 were always shown. */
+	if (config.port != NULL && config.port[0] != '\0') {
+		gboolean found = FALSE;
+		guint j;
+		for (j = 0; j < ports->len; j++) {
+			if (strcmp((char *)ports->pdata[j], config.port) == 0) {
+				found = TRUE;
+				break;
+			}
+		}
+		if (!found)
+			g_ptr_array_insert(ports, 0, g_strdup(config.port));
+	} else if (!ports->len) {
 		gchar *patterns = dlist_to_string(device_paths);
 		string = g_strdup_printf(_("No serial devices found!\n"
 					   "\n"

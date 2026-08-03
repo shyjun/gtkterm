@@ -48,25 +48,31 @@ static inline void device_monitor_handle(const char *action)
 		device_monitor_status(true);
 }
 
+static const gchar *get_devnode(GUdevDevice *device)
+{
+	const gchar *node = g_udev_device_get_device_file(device);
+	if (!node)
+		node = g_udev_device_get_property(device, "DEVNAME");
+	return node;
+}
+
 void event_udev(GUdevClient *client, const gchar *action, GUdevDevice *device)
 {
-
 	if (!device || !action)
 		return;
 
-	if (!g_udev_device_get_device_file(device))
+	const gchar *devnode = get_devnode(device);
+	if (!devnode)
 		return;
 
-	const gchar *name = config.port;
-
-	if (strcmp(g_udev_device_get_device_file(device), name) == 0)
+	if (strcmp(devnode, config.port) == 0)
 		device_monitor_handle(action);
 }
 
 extern void device_monitor_start(void)
 {
 
-	const gchar *const subsystems[] = {NULL, NULL};
+	const gchar *const subsystems[] = {"tty", NULL};
 
 	/* Initial check */
 	GUdevClient *udev_client = g_udev_client_new(subsystems);
