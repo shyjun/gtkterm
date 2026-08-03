@@ -47,7 +47,7 @@ static gboolean reconnect_timer_cb(gpointer user_data)
 		return G_SOURCE_REMOVE;
 	}
 
-	if (config.autoreconnect_enabled && config.port && config.port[0]) {
+	if (config.port && config.port[0]) {
 		int fd = open(config.port, O_RDWR | O_NOCTTY | O_NDELAY);
 		if (fd != -1) {
 			close(fd);
@@ -67,22 +67,36 @@ static gboolean reconnect_timer_cb(gpointer user_data)
 	return G_SOURCE_CONTINUE;
 }
 
+static void dbg_log(const char *fmt, ...)
+{
+	FILE *f = fopen("/tmp/gtkterm_debug.log", "a");
+	if (!f) return;
+	va_list args;
+	va_start(args, fmt);
+	vfprintf(f, fmt, args);
+	va_end(args);
+	fclose(f);
+}
+
 static inline void device_monitor_status(const bool connected)
 {
+	dbg_log("device_monitor_status: connected=%d, config.port=%s\n",
+	        connected, config.port);
 	if (connected) {
-		if (config.autoreconnect_enabled) {
-			if (reconnect_timer_id != 0) {
-				g_source_remove(reconnect_timer_id);
-				reconnect_timer_id = 0;
-			}
-			reconnect_attempts = 0;
-			int fd = open(config.port, O_RDWR | O_NOCTTY | O_NDELAY);
-			if (fd != -1) {
-				close(fd);
-				interface_open_port();
-			} else {
-				reconnect_timer_id = g_timeout_add(200, reconnect_timer_cb, NULL);
-			}
+		if (reconnect_timer_id != 0) {
+			g_source_remove(reconnect_timer_id);
+			reconnect_timer_id = 0;
+		}
+		reconnect_attempts = 0;
+		int fd = open(config.port, O_RDWR | O_NOCTTY | O_NDELAY);
+		dbg_log("device_monitor_status: initial open test on %s returned fd=%d\n", config.port, fd);
+		if (fd != -1) {
+			close(fd);
+			interface_open_port();
+			dbg_log("device_monitor_status: interface_open_port called, serial_port_fd=%d\n", serial_port_fd);
+		} else {
+			dbg_log("device_monitor_status: open failed, starting retry timer\n");
+			reconnect_timer_id = g_timeout_add(200, reconnect_timer_cb, NULL);
 		}
 	} else {
 		if (reconnect_timer_id != 0) {
@@ -90,11 +104,13 @@ static inline void device_monitor_status(const bool connected)
 			reconnect_timer_id = 0;
 		}
 		interface_close_port();
+		dbg_log("device_monitor_status: interface_close_port called\n");
 	}
 }
 
 static inline void device_monitor_handle(const char *action)
 {
+	dbg_log("device_monitor_handle: action=%s\n", action);
 	if (strcmp(action, "remove") == 0)
 		device_monitor_status(false);
 	else if (strcmp(action, "add") == 0)
@@ -114,25 +130,44 @@ void event_udev(GUdevClient *client, const gchar *action, GUdevDevice *device)
 	if (!device || !action)
 		return;
 
+	const gchar *devfile = g_udev_device_get_device_file(device);
+	const gchar *devprop = g_udev_device_get_property(device, "DEVNAME");
+	const gchar *subsys = g_udev_device_get_subsystem(device);
+	const gchar *name = g_udev_device_get_name(device);
+
+	dbg_log("event_udev: action=%s, devfile=%s, devprop=%s, subsys=%s, name=%s, config.port=%s\n",
+	        action ? action : "null",
+	        devfile ? devfile : "null",
+	        devprop ? devprop : "null",
+	        subsys ? subsys : "null",
+	        name ? name : "null",
+	        config.port ? config.port : "null");
+
 	const gchar *devnode = get_devnode(device);
 	if (!devnode)
 		return;
 
 	if (strcmp(devnode, config.port) == 0)
 		device_monitor_handle(action);
+	else if (devprop && strcmp(devprop, config.port) == 0)
+		device_monitor_handle(action);
+	else if (name && config.port && strstr(config.port, name) != NULL)
+		device_monitor_handle(action);
 }
 
 extern void device_monitor_start(void)
 {
-
-	const gchar *const subsystems[] = {"tty", NULL};
+	dbg_log("device_monitor_start called for config.port=%s\n", config.port);
+	const gchar *const subsystems[] = {NULL, NULL};
 
 	/* Initial check */
 	GUdevClient *udev_client = g_udev_client_new(subsystems);
 
 	if (g_udev_client_query_by_device_file(udev_client, config.port) == NULL) {
+		dbg_log("device_monitor_start: query_by_device_file NULL\n");
 		device_monitor_status(false);
 	} else {
+		dbg_log("device_monitor_start: query_by_device_file FOUND\n");
 		device_monitor_status(true);
 	}
 
