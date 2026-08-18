@@ -38,6 +38,8 @@ void Put_temp_message(const gchar *, gint);
 void Set_window_title(gchar *msg);
 void interface_close_port(void);
 void interface_open_port(void);
+void interface_open_port_quiet(void);
+void interface_open_port_ext(gboolean show_error_dialog);
 
 void toggle_logging_pause_resume(gboolean currentlyLogging);
 void toggle_logging_sensitivity(gboolean currentlyLogging);

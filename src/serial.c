@@ -143,6 +143,16 @@ int Send_chars(char *string, int length)
 
 gboolean Config_port(void)
 {
+	return Config_port_ext(TRUE);
+}
+
+gboolean Config_port_quiet(void)
+{
+	return Config_port_ext(FALSE);
+}
+
+gboolean Config_port_ext(gboolean show_error_dialog)
+{
 	struct termios termios_p;
 	gchar *msg = NULL;
 	unsigned int speed_margin;
@@ -153,10 +163,13 @@ gboolean Config_port(void)
 
 	if(serial_port_fd == -1)
 	{
-		msg = g_strdup_printf(_("Cannot open %s: %s\n"),
-		                      config.port, strerror_utf8(errno));
-		show_message(msg, MSG_ERR);
-		g_free(msg);
+		if (show_error_dialog)
+		{
+			msg = g_strdup_printf(_("Cannot open %s: %s\n"),
+			                      config.port, strerror_utf8(errno));
+			show_message(msg, MSG_ERR);
+			g_free(msg);
+		}
 
 		return FALSE;
 	}
@@ -164,10 +177,13 @@ gboolean Config_port(void)
 	if (!isatty(serial_port_fd))
 	{
 		Close_port();
-		msg = g_strdup_printf(_("%s is not a valid serial port\n"),
-				      config.port);
-		show_message(msg, MSG_ERR);
-		g_free(msg);
+		if (show_error_dialog)
+		{
+			msg = g_strdup_printf(_("%s is not a valid serial port\n"),
+					      config.port);
+			show_message(msg, MSG_ERR);
+			g_free(msg);
+		}
 
 		return FALSE;
 	}
@@ -177,9 +193,12 @@ gboolean Config_port(void)
 	    if(flock(serial_port_fd, LOCK_EX | LOCK_NB) == -1)
 	    {
 		Close_port();
-		msg = g_strdup_printf(_("Cannot lock port! The serial port may currently be in use by another program.\n"));
-		show_message(msg, MSG_ERR);
-		g_free(msg);
+		if (show_error_dialog)
+		{
+			msg = g_strdup_printf(_("Cannot lock port! The serial port may currently be in use by another program.\n"));
+			show_message(msg, MSG_ERR);
+			g_free(msg);
+		}
 
 		return FALSE;
 		}
@@ -195,10 +214,13 @@ gboolean Config_port(void)
 	    serial_port_speed - speed_margin > config.vitesse)
 	{
 		Close_port();
-		msg = g_strdup_printf(_("Unable to set baud rate %u"),
-					config.vitesse);
-		show_message(msg, MSG_ERR);
-		g_free(msg);
+		if (show_error_dialog)
+		{
+			msg = g_strdup_printf(_("Unable to set baud rate %u"),
+						config.vitesse);
+			show_message(msg, MSG_ERR);
+			g_free(msg);
+		}
 		return FALSE;
 	}
 

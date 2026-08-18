@@ -23,6 +23,8 @@ extern int serial_port_fd;
 
 int Send_chars(char *, int);
 gboolean Config_port(void);
+gboolean Config_port_quiet(void);
+gboolean Config_port_ext(gboolean show_error_dialog);
 void Set_signals(guint);
 int lis_sig(void);
 void Close_port(void);

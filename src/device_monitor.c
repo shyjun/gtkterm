@@ -42,6 +42,11 @@ static gboolean reconnect_timer_cb(gpointer user_data)
 {
 	reconnect_attempts++;
 
+	if (!config.autoreconnect_enabled) {
+		reconnect_timer_id = 0;
+		return G_SOURCE_REMOVE;
+	}
+
 	if (serial_port_fd != -1) {
 		reconnect_timer_id = 0;
 		return G_SOURCE_REMOVE;
@@ -51,7 +56,7 @@ static gboolean reconnect_timer_cb(gpointer user_data)
 		int fd = open(config.port, O_RDWR | O_NOCTTY | O_NDELAY);
 		if (fd != -1) {
 			close(fd);
-			interface_open_port();
+			interface_open_port_quiet();
 			if (serial_port_fd != -1) {
 				reconnect_timer_id = 0;
 				return G_SOURCE_REMOVE;
@@ -88,12 +93,15 @@ static inline void device_monitor_status(const bool connected)
 			reconnect_timer_id = 0;
 		}
 		reconnect_attempts = 0;
+		if (!config.autoreconnect_enabled) {
+			return;
+		}
 		int fd = open(config.port, O_RDWR | O_NOCTTY | O_NDELAY);
 		dbg_log("device_monitor_status: initial open test on %s returned fd=%d\n", config.port, fd);
 		if (fd != -1) {
 			close(fd);
-			interface_open_port();
-			dbg_log("device_monitor_status: interface_open_port called, serial_port_fd=%d\n", serial_port_fd);
+			interface_open_port_quiet();
+			dbg_log("device_monitor_status: interface_open_port_quiet called, serial_port_fd=%d\n", serial_port_fd);
 		} else {
 			dbg_log("device_monitor_status: open failed, starting retry timer\n");
 			reconnect_timer_id = g_timeout_add(200, reconnect_timer_cb, NULL);

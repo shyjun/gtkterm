@@ -882,7 +882,17 @@ void Set_window_title(gchar *msg)
 
 void interface_open_port(void)
 {
-	Config_port();
+	interface_open_port_ext(TRUE);
+}
+
+void interface_open_port_quiet(void)
+{
+	interface_open_port_ext(FALSE);
+}
+
+void interface_open_port_ext(gboolean show_error_dialog)
+{
+	Config_port_ext(show_error_dialog);
 
 	gchar *message;
 	message = get_port_string();
