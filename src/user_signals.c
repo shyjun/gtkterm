@@ -50,6 +50,10 @@ void user_signals_catch(void)
 {
 	struct sigaction sa;
 
+	/* Ignore SIGHUP so GTKTerm continues running if its launching terminal window is closed */
+	signal(SIGHUP, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
+
 	g_unix_signal_add(SIGUSR1, (GSourceFunc) handle_usr1, NULL);
 	g_unix_signal_add(SIGUSR2, (GSourceFunc) handle_usr2, NULL);
 
